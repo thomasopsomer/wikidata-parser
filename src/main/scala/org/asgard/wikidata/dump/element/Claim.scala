@@ -1,4 +1,4 @@
-package org.idio.wikidata.dump.element
+package org.asgard.wikidata.dump.element
 
 import org.json4s._
 import org.json4s.jackson.JsonMethods._
@@ -21,8 +21,8 @@ class Claim(jsonClaim: JArray, val relationshipType:String){
   /*
   * Get all the main Snaks within a claim
   * */
-  private def getMainSnaks() = {
-    val mainSnaks = jsonClaim.arr.flatMap{
+  private def getMainSnaks = {
+    jsonClaim.arr.flatMap {
       jvalue =>
         val snak = new Snak(jvalue)
         snak.argumentId match {
@@ -30,7 +30,7 @@ class Claim(jsonClaim: JArray, val relationshipType:String){
           case _ => None
         }
     }
-
+/*
     val validMainSnaks = mainSnaks.flatMap{
       snak =>
         snak.dataType match{
@@ -39,6 +39,7 @@ class Claim(jsonClaim: JArray, val relationshipType:String){
         }
     }
     validMainSnaks
+*/
   }
 
   /*
@@ -46,7 +47,7 @@ class Claim(jsonClaim: JArray, val relationshipType:String){
    in the example: [Qid_USA, Qid_Gotham, Qid_earth]
   */
   lazy val argumentQids ={
-    val mainSnaks = getMainSnaks()
+    val mainSnaks = getMainSnaks
     if (mainSnaks.isEmpty)
        List[String]()
     else

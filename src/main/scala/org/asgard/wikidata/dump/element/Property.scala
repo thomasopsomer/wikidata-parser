@@ -1,4 +1,4 @@
-package org.idio.wikidata.dump.element
+package org.asgard.wikidata.dump.element
 
 import scala.util.{Success, Try}
 
@@ -10,7 +10,7 @@ import org.json4s.jackson.JsonMethods._
 
 class Property(parsedJson: JValue) extends DumpElement {
 
-  def getId():Option[String]={
+  def getId: Option[String]={
     Try((parsedJson \ "id").asInstanceOf[JString].s) match{
       case Success(s) => Some(s)
       case _ => None
@@ -20,7 +20,7 @@ class Property(parsedJson: JValue) extends DumpElement {
   def getLabel(language:String):Option[String]={
     try{
       val languageAliases = (parsedJson \ "aliases" \ language).asInstanceOf[JArray].arr
-      Some((languageAliases(0) \ "value").asInstanceOf[JString].s)
+      Some((languageAliases.head \ "value").asInstanceOf[JString].s)
     }catch{
       case _=> None
     }

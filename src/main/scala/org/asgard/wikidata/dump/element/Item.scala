@@ -1,4 +1,4 @@
-package org.idio.wikidata.dump.element
+package org.asgard.wikidata.dump.element
 
 import scala.util.{Success, Try}
 
@@ -11,28 +11,28 @@ import org.json4s.jackson.JsonMethods._
 * */
 class Item(parsedJson: JValue) extends DumpElement {
 
-  def getAliases(language: String):Option[String]={
+  def getAliases(language: String): Option[String]={
     Try((parsedJson \ "aliases" \ language \ "value").asInstanceOf[JString].s) match{
       case Success(s) => Some(s)
       case _ => None
     }
   }
 
-  def getType():Option[String]={
+  def getType: Option[String]={
     Try((parsedJson \ "type" ).asInstanceOf[JString].s) match{
       case Success(s) => Some(s)
       case _ => None
     }
   }
 
-  def getId():Option[String]={
+  def getId: Option[String]={
     Try((parsedJson \ "id").asInstanceOf[JString].s) match{
       case Success(s) => Some(s)
       case _ => None
     }
   }
 
-  def getClaims():List[Claim] ={
+  def getClaims:List[Claim] ={
     Try((parsedJson \ "claims").asInstanceOf[JObject]) match{
       case Success(claims) => {
         claims.obj.map{
@@ -44,10 +44,10 @@ class Item(parsedJson: JValue) extends DumpElement {
     }
   }
 
-  def getWikipediaReference(language:String):Option[String] ={
+  def getWikipediaReference(language:String):Option[String] = {
     val languageKey = language + "wiki"
     Try((parsedJson \ "sitelinks" \ languageKey \ "title").asInstanceOf[JString].s) match{
-        case Success(s) => Some(s)
+        case Success(s) => Some(s.replace(" ", "_"))
         case _ => None
     }
   }
@@ -56,8 +56,8 @@ class Item(parsedJson: JValue) extends DumpElement {
   * Returns a list of Tuples containing:
   *     (RelationshipTypePid, ArgumentQId)
   * */
-  def getRelationshipTuples()= {
-     getClaims().flatMap{
+  def getRelationshipTuples: List[(String, String)] = {
+     getClaims.flatMap{
       claim =>
         claim.argumentQids.map{
            qid =>
