@@ -11,8 +11,10 @@ import org.json4s.jackson.JsonMethods._
 * */
 class Item(parsedJson: JValue) extends DumpElement {
 
-  def getAliases(language: String): Option[String]={
-    Try((parsedJson \ "aliases" \ language \ "value").asInstanceOf[JString].s) match{
+  implicit val formats = DefaultFormats
+
+  def getAliases(language: String): Option[List[String]] = {
+    Try(parsedJson \ "aliases" \ language \ "value" \\ classOf[JString]) match{
       case Success(s) => Some(s)
       case _ => None
     }
@@ -49,6 +51,13 @@ class Item(parsedJson: JValue) extends DumpElement {
     Try((parsedJson \ "sitelinks" \ languageKey \ "title").asInstanceOf[JString].s) match{
         case Success(s) => Some(s.replace(" ", "_"))
         case _ => None
+    }
+  }
+
+  def getDescription(language: String): Option[String] = {
+    Try((parsedJson \ "descriptions" \ language \ "value").asInstanceOf[JString].s) match{
+      case Success(s) => Some(s)
+      case _ => None
     }
   }
 

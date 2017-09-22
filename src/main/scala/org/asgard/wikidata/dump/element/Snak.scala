@@ -24,8 +24,7 @@ class Snak(json: JValue){
 
   lazy val argumentId: Option[String] = {
     dataType match {
-      case Some(t) => {
-        t match {
+      case Some(t) => t match {
           case "wikibase-item" =>
             Try((json \ "mainsnak" \ "datavalue" \ "value" \ "id").asInstanceOf[JString].s) match {
               case Success(s) => Some(s)
@@ -38,8 +37,7 @@ class Snak(json: JValue){
             }
           case _ => None
         }
-      }
+      case _ => None
     }
   }
-
 }

@@ -6,7 +6,7 @@ package org.asgard.wikidata.dump
 
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext}
-import org.apache.spark.sql.SQLContext
+import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
 import org.asgard.wikidata.dump.element.{DumpElement, Item, Property}
 import scopt.OptionParser
 
@@ -15,7 +15,8 @@ case class WikidataItem(
                          qid: String,
                          props: List[Prop],
                          wikiTitle: String,
-                         aliases: String)
+                         aliases: List[String],
+                         description: String)
 
 
 case class Prop(pId: String, value: String)
@@ -29,8 +30,21 @@ object WikidataParser {
                      numPartitions: Option[Int] = None,
                      test: Boolean = false,
                      itemsPath: Option[String] = None,
-                     propsPath: Option[String] = None
+                     propsPath: Option[String] = None,
+                     onlyWikipedia: Boolean = false
                    )
+
+  lazy val conf = new SparkConf()
+    .setAppName("WikidataDumpParser")
+    .setMaster("local[*]")
+    .set("spark.driver.allowMultipleContexts", "true")
+    .set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
+  // .set("spark.sql.parquet.compression.codec", "gzip")
+
+  lazy val spark = SparkSession
+    .builder()
+    .config(conf = conf)
+    .getOrCreate()
 
   def preprocessDump(originalDump: RDD[String]): RDD[String] = {
     originalDump
@@ -40,27 +54,19 @@ object WikidataParser {
 
   def run(params: Params): Unit = {
 
-    // init spark context
-    val conf = new SparkConf()
-      .setAppName("WikidumpParser")
-      .set("spark.driver.allowMultipleContexts", "true")
-
-    // val sc = new SparkContext(conf)
-    val sc = SparkContext.getOrCreate(conf)
-    sc.hadoopConfiguration.set("fs.s3a.connection.timeout", "500000")
+    spark.sparkContext.hadoopConfiguration.set("fs.s3a.connection.timeout", "500000")
 
     // sqlContext and implicits for dataframe
-    val hc = new SQLContext(sc)
-    import hc.implicits._
+    import spark.implicits._
 
     // Load wikidump as rdd
-    val originalDump = sc.textFile(params.inputPath)
+    val originalDump = spark.sparkContext.textFile(params.inputPath)
     // preprocess dump to have a valid json per line
     var dump = preprocessDump(originalDump)
 
     // if test mode just process the first 100 lines
     if (params.test) {
-      dump = sc.parallelize(dump.take(100))
+      dump = spark.sparkContext.parallelize(dump.take(1000))
     }
 
     // load list of entity ids and property ids to keep
@@ -77,16 +83,18 @@ object WikidataParser {
     val df = dump.map(DumpElement.parseElement)
         .filter(x => x != null)
         .filter(x => QIds.contains(x.getId.orNull) || QIds.isEmpty)
-        .flatMap {
+        .flatMap({
           case item: Item => Some(WikidataItem(
             qid = item.getId.orNull,
             props = item.getRelationshipTuples.collect {
               case x if PIds.contains(x._1) || PIds.isEmpty => Prop(x._1, x._2)
             },
             wikiTitle = item.getWikipediaReference("en").orNull,
-            aliases = item.getAliases("en").orNull))
+            aliases = item.getAliases("en").orNull,
+            description = item.getDescription("en").orNull))
           case prop: Property => None
-        }
+        })
+        .filter(x => (x.wikiTitle != null & params.onlyWikipedia) || !params.onlyWikipedia)
       .toDF()
 
     // save in parquet
@@ -123,6 +131,10 @@ object WikidataParser {
       opt[String]("propsPath")
         .text("Path to txt file with list of properties ids to keep. If no path, we keep all properties for each entity")
         .action((x, c) => c.copy(propsPath = Some(x)))
+
+      opt[Unit]("onlyWikipedia")
+        .text("Flag to keep only wikidata item that have corresponding wikipedia page")
+        .action((_, c) => c.copy(onlyWikipedia = true))
 
     }
     // parser.parse returns Option[C]
