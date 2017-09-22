@@ -1,14 +1,14 @@
 //
 name := "wikidata-parser"
 version := "0.0.1"
-scalaVersion := "2.10.5"
+scalaVersion := "2.11.8"
 organization := "asgard"
 
 // sbt spark plugin practice:
 // the name of your Spark Package
 spName := "asgard/wikidata-parser"
 // the Spark Version your package depends on.
-sparkVersion := "1.6.3"
+sparkVersion := "2.1.1"
 // sparkComponents += "mllib" // creates a dependency on spark-mllib.
 sparkComponents += "sql"
 
@@ -16,7 +16,7 @@ sparkComponents += "sql"
 // dependencies
 libraryDependencies ++= Seq(
   "org.json4s" %% "json4s-jackson" % "3.2.10",
-  "org.scalatest" % "scalatest_2.10" % "2.0" % "test",
+  "org.scalatest" % "scalatest_2.11" % "2.2.2",
   "com.github.scopt" %% "scopt" % "3.4.0"
 )
 
@@ -29,7 +29,7 @@ dockerfile in docker := {
   val artifactTargetPath = s"/home/wikidata-parser/${artifact.name}"
   val log4jConfig: File = new File("log4j.properties")
   new Dockerfile {
-    from("asgard/spark")
+    from("asgard/pyspark3-alpine")
     add(artifact, artifactTargetPath)
     env("WIKIDATA_PARSER_JAR_PATH", artifactTargetPath)
     add(log4jConfig, "/usr/spark/conf/log4j.properties")
